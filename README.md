@@ -15,9 +15,29 @@
 
 ---
 
-## What it does
+## Why?
 
-`agentic-mesh` gives multiple AI agents running simultaneously the ability to:
+**You have multiple AI agents running at the same time — and they don't know what each other are doing.**
+
+You might be running:
+- A **coding agent** (OpenClaw) that is building your project
+- A **research agent** (Hermes) that is investigating a library
+- A **monitoring agent** (Hermes) that is watching logs or running tests
+
+And right now, if the coding agent finds a bug, the research agent has no idea. If the monitoring agent discovers something important, the coding agent never sees it.
+
+**`agentic-mesh` fixes that.**
+
+It gives every agent a shared space to:
+- **Publish** what they find, so other agents can see it
+- **Query** what other agents have discovered
+- **Delegate** tasks directly to a specific agent
+
+No agent works in isolation anymore. They collaborate.
+
+---
+
+## What it does
 
 - **Publish** findings, tasks, code snippets, notes, and logs to a shared context store
 - **Query** what other agents have discovered or are working on
