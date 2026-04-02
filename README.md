@@ -7,7 +7,7 @@
 [![Node.js >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
 [![npm version](https://img.shields.io/npm/v/agentic-mesh.svg)](https://www.npmjs.com/package/agentic-mesh)
 [![bundle size](https://img.shields.io/bundlephobia/min/agentic-mesh.svg)](https://bundlephobia.com/package/agentic-mesh)
-[![prs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/DevvGwardo/agentic-mesh/pulls)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/DevvGwardo/agentic-mesh/pulls)
 
 **Cross-agent collaboration framework for [Hermes](https://github.com/DevvGwardo/claude-code) and [OpenClaw](https://github.com/DevvGwardo/openclaw-evo) — shared context, peer discovery, and task delegation.**
 
@@ -35,20 +35,20 @@ Agents can run on the same machine or across different machines — the **Hub** 
 
 ```mermaid
 graph TD
-    subgraph "agentic-mesh"
-        types([types.ts<br/>Interfaces + LLM Client"])
-        storage(["storage.ts<br/>File-based context store"])
-        mesh(["mesh.ts<br/>Core engine + Hub client"])
-        hub(["hub.ts<br/>WebSocket coordinator"])
+    subgraph agentic_mesh[agentic-mesh]
+        types[types.ts<br/>Interfaces + LLM Client]
+        storage[storage.ts<br/>File-based context store]
+        mesh[mesh.ts<br/>Core engine + Hub client]
+        hub[hub.ts<br/>WebSocket coordinator]
     end
 
-    subgraph "Hermes Integration"
-        h_tool["MeshTool<br/>10 operations"]
-        h_cron["MeshCron<br/>Periodic pulse"]
+    subgraph hermes_integration[Hermes Integration]
+        h_tool[MeshTool<br/>10 operations]
+        h_cron[MeshCron<br/>Periodic pulse]
     end
 
-    subgraph "OpenClaw Integration"
-        oc_tool["ClawMeshTool<br/>Native plugin"]
+    subgraph openclaw_integration[OpenClaw Integration]
+        oc_tool[ClawMeshTool<br/>Native plugin]
     end
 
     mesh --> types
@@ -66,7 +66,7 @@ graph TD
 ```mermaid
 graph LR
     A["Hermes<br/>meshDir: ~/hermes/mesh"] <--> B["Storage<br/>~/hermes/mesh/"]
-    C["OpenClaw<br/>meshDir: ~/hermes/mesh"] <--> B
+    C["OpenClaw Evo<br/>meshDir: ~/hermes/mesh"] <--> B
 ```
 
 **HUB Mode** — Agents connect via WebSocket. Works across machines.
@@ -75,15 +75,15 @@ graph LR
 graph TD
     H["MeshHub<br/>ws://localhost:8765"]
 
-    subgraph "Machine A"
+    subgraph machine_a[Machine A]
         A1["Hermes"]
     end
 
-    subgraph "Machine B"
+    subgraph machine_b[Machine B]
         B1["OpenClaw Evo"]
     end
 
-    subgraph "Machine C"
+    subgraph machine_c[Machine C]
         C1["Hermes (secondary)"]
     end
 
@@ -163,7 +163,8 @@ await mesh.publish({
 });
 
 // Query what's happening
-const { contexts } = (await mesh.query({ tags: ['bug'], limit: 10 })).data;
+const qr = await mesh.query({ tags: ['bug'], limit: 10 });
+const { contexts } = qr.data;
 
 // Add mesh context to your system prompt
 const meshContext = await mesh.buildMeshContext();
@@ -211,19 +212,19 @@ The `mesh` tool exposes 10 operations:
 | `summarize` | Human-readable digest of recent activity |
 | `context` | Mesh data formatted for a system prompt |
 
-### `publish`
+### publish
 
 ```typescript
 await mesh.publish({
   type: 'finding',       // task | finding | code | log | note | plan | result | message | system
   content: '...',
   tags: ['research'],
-  importance: 2,         // 1=low, 2=medium, 3=high
-  ttlSeconds: 3600,      // auto-expire after 1h (0=forever)
+  importance: 2,          // 1=low, 2=medium, 3=high
+  ttlSeconds: 3600,       // auto-expire after 1h (0=forever)
 });
 ```
 
-### `query`
+### query
 
 ```typescript
 const qr = await mesh.query({
@@ -236,7 +237,7 @@ const qr = await mesh.query({
 // qr.data.contexts, qr.data.total, qr.data.hasMore
 ```
 
-### `delegate`
+### delegate
 
 ```typescript
 const { taskId, assignedTo } = await mesh.delegate(
@@ -245,7 +246,7 @@ const { taskId, assignedTo } = await mesh.delegate(
 );
 ```
 
-### `agents`
+### agents
 
 ```typescript
 const { agents } = await mesh.listPeers();
@@ -377,44 +378,44 @@ The Hub speaks JSON over WebSocket. Message types:
 
 ## API Reference
 
-### `Mesh.create(config)` → `Promise<Mesh>`
+### Mesh.create(config) → Promise&lt;Mesh&gt;
 
 Create and initialize a mesh instance.
 
 ```typescript
 const mesh = await Mesh.create({
-  meshId: string;              // logical group (e.g. 'clawborators')
-  agentInfo: AgentInfo;        // this agent's identity + capabilities
-  meshDir?: string;            // file storage path (omit for Hub-only)
-  hubUrl?: string;             // WebSocket Hub URL (optional)
-  wsImpl?: typeof WebSocket;   // injectable for testing
-  llm?: LLMClient;             // for context summarization
-  heartbeatMs?: number;         // Hub ping interval (default: 30s)
-  staleMaxAgeMs?: number;       // purge threshold (default: 24h)
+  meshId: string,              // logical group (e.g. 'clawborators')
+  agentInfo: AgentInfo,        // this agent's identity + capabilities
+  meshDir?: string,            // file storage path (omit for Hub-only)
+  hubUrl?: string,             // WebSocket Hub URL (optional)
+  wsImpl?: typeof WebSocket,   // injectable for testing
+  llm?: LLMClient,             // for context summarization
+  heartbeatMs?: number,         // Hub ping interval (default: 30s)
+  staleMaxAgeMs?: number,       // purge threshold (default: 24h)
 });
 ```
 
-### `mesh.publish(params)` → `Promise<MeshResult>`
+### mesh.publish(params) → Promise&lt;MeshResult&gt;
 
 Publish context to the mesh.
 
-### `mesh.query(filter)` → `Promise<MeshQueryResult>`
+### mesh.query(filter) → Promise&lt;MeshQueryResult&gt;
 
 Search mesh context.
 
-### `mesh.listPeers()` → `Promise<MeshAgentsResult>`
+### mesh.listPeers() → Promise&lt;MeshAgentsResult&gt;
 
 List active peer agents.
 
-### `mesh.delegate(instruction, priority)` → `Promise<MeshDelegationResult>`
+### mesh.delegate(instruction, priority) → Promise&lt;MeshDelegationResult&gt;
 
 Delegate a task to a peer agent.
 
-### `mesh.buildMeshContext()` → `Promise<string>`
+### mesh.buildMeshContext() → Promise&lt;string&gt;
 
 Format recent mesh activity as a string for injection into a system prompt.
 
-### `mesh.summarizeActivity(hours?)` → `Promise<string>`
+### mesh.summarizeActivity(hours?) → Promise&lt;string&gt;
 
 Human-readable digest of mesh activity over a time window.
 
