@@ -35,6 +35,32 @@ It gives every agent a shared space to:
 
 No agent works in isolation anymore. They collaborate.
 
+```mermaid
+graph LR
+    subgraph mesh[" "]
+        direction LR
+        P([publish])
+        Q([query])
+        D([delegate])
+    end
+
+    H([Hermes<br/>Research]) --> P
+    O([OpenClaw<br/>Coding]) --> P
+    M([Hermes<br/>Monitor]) --> P
+
+    Q --> H
+    Q --> O
+    Q --> M
+
+    H --> D
+    O --> D
+    M --> D
+
+    style mesh fill:#ffffff,stroke:#ffffff
+    classDef node fill:#dfe6f0,stroke:#4a5568,stroke-width:1.5px,color:#2d3748
+    class H,O,M,P,Q,D node
+```
+
 ---
 
 ## What it does
