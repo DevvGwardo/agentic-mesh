@@ -1,0 +1,48 @@
+{
+  "name": "agentic-mesh",
+  "version": "0.1.0",
+  "description": "Cross-agent collaboration framework for Hermes and OpenClaw — shared context, orchestration, and peer discovery.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./hub": {
+      "import": "./dist/hub.js",
+      "types": "./dist/hub.d.ts"
+    },
+    "./hermes": {
+      "import": "./dist/hermes/index.js",
+      "types": "./dist/hermes/index.d.ts"
+    },
+    "./openclaw": {
+      "import": "./dist/openclaw/index.js",
+      "types": "./dist/openclaw/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "hub": "node --loader ts-node/esm src/hub.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "multi-agent",
+    "hermes",
+    "openclaw",
+    "collaboration",
+    "orchestration"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "ws": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/ws": "^8",
+    "ts-node": "^10",
+    "typescript": "^5.3"
+  }
+}
