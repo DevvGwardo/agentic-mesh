@@ -26,7 +26,9 @@
   "scripts": {
     "build": "tsc",
     "hub": "node --loader ts-node/esm src/hub.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "keywords": [
     "multi-agent",
@@ -42,7 +44,9 @@
   "devDependencies": {
     "@types/node": "^20",
     "@types/ws": "^8",
+    "@vitest/ui": "^4.1.2",
     "ts-node": "^10",
-    "typescript": "^5.3"
+    "typescript": "^5.3",
+    "vitest": "^4.1.2"
   }
 }

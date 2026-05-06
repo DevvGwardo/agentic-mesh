@@ -25,3 +25,4 @@ export * from './types.js';
 export { Mesh, type MeshConfig } from './mesh.js';
 export { MeshStorage } from './storage.js';
 export { MeshHub, type HubConfig } from './hub.js';
+export { MESH_TOOL_SCHEMA, runMeshTool, type MeshToolArgs } from './tool.js';

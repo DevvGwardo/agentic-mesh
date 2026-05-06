@@ -18,6 +18,7 @@ import type {
   DelegationTask,
   MeshOp,
   HubMessage,
+  MeshResult,
 } from './types.js';
 import { MeshStorage } from './storage.js';
 
@@ -49,6 +50,7 @@ export class MeshHub {
   private agents = new Map<string, ConnectedAgent>();  // agentId → ConnectedAgent
   private wss: WebSocketServer;
   private purgeTimer: ReturnType<typeof setInterval> | null = null;
+  private heartbeatCheckTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(config: HubConfig = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -178,7 +180,7 @@ export class MeshHub {
     }, purgeIntervalMs);
 
     // Heartbeat check — disconnect dead agents
-    setInterval(() => {
+    this.heartbeatCheckTimer = setInterval(() => {
       const now = Date.now();
       const timeout = this.config.heartbeatTimeoutMs;
       for (const [id, agent] of this.agents) {
@@ -195,7 +197,7 @@ export class MeshHub {
 
   // ─── Message handling ─────────────────────────────────────────────────────
 
-  private handleMeshOp(op: MeshOp & { id?: string }): import('./types.js').MeshResult {
+  private handleMeshOp(op: MeshOp & { id?: string }): MeshResult {
     const start = Date.now();
 
     try {
@@ -246,6 +248,9 @@ export class MeshHub {
 
         case 'delete': {
           const ok = this.storage.deleteContext(op.id);
+          if (ok) {
+            this.broadcast({ type: 'hub:context:del', payload: { id: op.id } });
+          }
           return { ok, op: 'delete', error: ok ? undefined : 'Not found', ms: Date.now() - start };
         }
 
@@ -260,7 +265,9 @@ export class MeshHub {
           const agent = this.findBestAgent(op.task);
           if (agent) {
             // Send directly to that agent
-            agent.ws.send(JSON.stringify({ type: 'hub:delegate', payload: op.task }));
+            if (agent.ws.readyState === WebSocket.OPEN) {
+              agent.ws.send(JSON.stringify({ type: 'hub:delegate', payload: op.task }));
+            }
             return {
               ok: true, op: 'delegate', ms: Date.now() - start,
               data: { taskId: op.task.id, assignedTo: agent.info, queued: false },
@@ -343,6 +350,7 @@ export class MeshHub {
 
   stop(): void {
     if (this.purgeTimer) clearInterval(this.purgeTimer);
+    if (this.heartbeatCheckTimer) clearInterval(this.heartbeatCheckTimer);
     for (const agent of this.agents.values()) {
       agent.ws.close();
     }

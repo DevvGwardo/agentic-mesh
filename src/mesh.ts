@@ -413,7 +413,7 @@ export class Mesh {
   async summarizeActivity(hours = 4): Promise<string> {
     const since = Date.now() - hours * 3600 * 1000;
     const { contexts } = (await this.query({ since, limit: 20 })).data;
-    if (contexts.length === 0) return 'No mesh activity in the last ${hours}h.';
+    if (contexts.length === 0) return `No mesh activity in the last ${hours}h.`;
 
     // Group by type
     const byType = new Map<string, MeshContext[]>();

@@ -1,0 +1,17 @@
+# Build output
+dist/
+
+# Dependencies
+node_modules/
+
+# Local mesh storage (created at runtime)
+mesh-store/
+*.log
+
+# Editor directories
+.DS_Store
+.vscode/
+.idea/
+
+# OS files
+Thumbs.db

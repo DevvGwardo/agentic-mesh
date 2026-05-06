@@ -52,9 +52,9 @@ export class MeshStorage {
     const agents = this.listAgents();
     const idx = agents.findIndex(a => a.id === info.id);
     if (idx >= 0) {
-      agents[idx] = { ...info, lastSeen: Date.now() };
+      agents[idx] = { ...info };
     } else {
-      agents.push({ ...info, lastSeen: Date.now() });
+      agents.push({ ...info });
     }
     this.writeAgents(agents);
     this.agentsCache = null;
@@ -102,7 +102,6 @@ export class MeshStorage {
   writeContext(ctx: MeshContext): void {
     const path = join(this.contextsDir, `${ctx.id}.json`);
     writeFileSync(path, JSON.stringify(ctx, null, 2), 'utf-8');
-    this.contextsCache.set(ctx.id, ctx);
     this.cacheDirty = true;
   }
 
@@ -268,17 +267,24 @@ export class MeshStorage {
     let purgedContexts = 0;
     let purgedAgents = 0;
 
-    // Purge stale contexts
-    const ctxFiles = readdirSync(this.contextsDir).filter(f => f.endsWith('.json'));
-    for (const file of ctxFiles) {
-      try {
-        const ctx = JSON.parse(readFileSync(join(this.contextsDir, file), 'utf-8')) as MeshContext;
-        if (ctx.expiresAt && ctx.expiresAt < Date.now()) {
-          unlinkSync(join(this.contextsDir, file));
-          purgedContexts++;
-        }
-      } catch {}
-    }
+    // Purge expired contexts directly from disk
+    try {
+      const files = readdirSync(this.contextsDir).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const ctx = JSON.parse(readFileSync(join(this.contextsDir, file), 'utf-8')) as MeshContext;
+          if (ctx.expiresAt && ctx.expiresAt < Date.now()) {
+            const path = join(this.contextsDir, file);
+            try { unlinkSync(path); } catch { /* already gone */ }
+            this.contextsCache.delete(ctx.id);
+            purgedContexts++;
+          }
+        } catch { /* corrupted file, skip */ }
+      }
+    } catch { /* contexts dir doesn't exist */ }
+
+    // Warm cache after purging to reflect current state
+    this.warmContextCache();
 
     // Purge stale agents
     const agents = this.listAgents();
