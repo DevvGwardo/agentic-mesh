@@ -1,0 +1,177 @@
+#!/usr/bin/env node
+// mesh — CLI for agentic-mesh DIRECT mode. Shells in from Claude Code, Grok,
+// DAD supervisor, or any other agent that wants to read/write the shared
+// context store at ~/.hermes/mesh.
+//
+// Commands:
+//   mesh publish --type <t> --content <s> [--tags a,b] [--importance 1|2|3] [--id <agent-id>] [--name <agent-name>] [--runtime <rt>]
+//   mesh query [--type <t>] [--since 4h] [--limit 50] [--json]
+//   mesh peers [--json]
+//   mesh delegate --to <agent-or-runtime> --task <s> [--priority 1|2|3]
+//   mesh summarize [--hours 4]
+//   mesh tail [--interval 5]                     # poll loop, prints new contexts
+//
+// Defaults:
+//   meshId      : env MESH_ID         or 'clawborators'
+//   meshDir     : env MESH_DIR        or ~/.hermes/mesh
+//   agent id    : env MESH_AGENT_ID   or 'mesh-cli-<pid>'
+//   agent name  : env MESH_AGENT_NAME or 'mesh-cli'
+//   runtime     : env MESH_RUNTIME    or 'cli'
+//
+// Stdout is human-readable by default; pass --json for machine-readable.
+// Exits 0 on success, 1 on bad args, 2 on mesh op failure.
+
+import { Mesh } from '../dist/src/index.js';
+import process from 'node:process';
+import os from 'node:os';
+import path from 'node:path';
+
+const args = process.argv.slice(2);
+const cmd = args.shift();
+
+function parseFlags(argv) {
+  const out = {};
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a.startsWith('--')) {
+      const key = a.slice(2);
+      const next = argv[i + 1];
+      if (next === undefined || next.startsWith('--')) { out[key] = true; }
+      else { out[key] = next; i++; }
+    }
+  }
+  return out;
+}
+
+function die(msg, code = 1) { console.error(`mesh: ${msg}`); process.exit(code); }
+
+function usage() {
+  console.error(`mesh <command> [flags]
+
+Commands:
+  publish    write a context (--type, --content, optional --tags, --importance)
+  query      read contexts (--type, --since 4h, --limit 50, --json)
+  peers      list active peer agents (--json)
+  delegate   queue a task (--to <agent>, --task <str>, --priority 1|2|3)
+  summarize  human-readable digest (--hours 4)
+  tail       poll for new contexts (--interval 5)
+
+Env:
+  MESH_ID, MESH_DIR, MESH_AGENT_ID, MESH_AGENT_NAME, MESH_RUNTIME
+`);
+  process.exit(1);
+}
+
+if (!cmd || cmd === '-h' || cmd === '--help') usage();
+
+const flags = parseFlags(args);
+
+const meshId  = process.env.MESH_ID  || 'clawborators';
+const meshDir = process.env.MESH_DIR || path.join(os.homedir(), '.hermes', 'mesh');
+const agentId = flags.id   || process.env.MESH_AGENT_ID   || `mesh-cli-${process.pid}`;
+const name    = flags.name || process.env.MESH_AGENT_NAME || 'mesh-cli';
+const runtime = flags.runtime || process.env.MESH_RUNTIME || 'cli';
+
+async function withMesh(fn) {
+  const mesh = await Mesh.create({
+    meshId,
+    agentInfo: { id: agentId, name, runtime, version: '0.1', capabilities: {} },
+    meshDir,
+  });
+  try { return await fn(mesh); }
+  finally { await mesh.destroy(); }
+}
+
+function parseSince(s) {
+  if (!s) return undefined;
+  const m = String(s).match(/^(\d+)([smhd])?$/);
+  if (!m) die(`bad --since "${s}" (expected e.g. 30m, 4h, 2d)`);
+  const n = parseInt(m[1], 10);
+  const mult = { s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 }[m[2] || 'm'];
+  return Date.now() - n * mult;
+}
+
+try {
+  switch (cmd) {
+    case 'publish': {
+      if (!flags.type)    die('--type is required (finding|task|note|code|log)');
+      if (!flags.content) die('--content is required (use @file to read from disk)');
+      let content = flags.content;
+      if (content.startsWith('@')) {
+        const fs = await import('node:fs/promises');
+        content = await fs.readFile(content.slice(1), 'utf8');
+      }
+      const tags = flags.tags ? String(flags.tags).split(',').map(s => s.trim()) : [];
+      const importance = flags.importance ? parseInt(flags.importance, 10) : 2;
+      const res = await withMesh(m => m.publish({ type: flags.type, content, tags, importance }));
+      if (!res.ok) { console.error(JSON.stringify(res)); process.exit(2); }
+      console.log(res.data?.id ?? 'ok');
+      break;
+    }
+    case 'query': {
+      const filter = {};
+      if (flags.type)  filter.type = flags.type;
+      if (flags.since) filter.since = parseSince(flags.since);
+      const limit = flags.limit ? parseInt(flags.limit, 10) : 50;
+      const res = await withMesh(m => m.op({ op: 'query', filter, limit }));
+      if (!res.ok) { console.error(JSON.stringify(res)); process.exit(2); }
+      const ctxs = res.data?.contexts ?? [];
+      if (flags.json) { console.log(JSON.stringify(ctxs, null, 2)); break; }
+      if (ctxs.length === 0) { console.log('(no contexts match)'); break; }
+      for (const c of ctxs) {
+        const age = Math.round((Date.now() - c.createdAt) / 60_000);
+        console.log(`[${c.type}] ${c.agentName} (${age}m ago)`);
+        console.log(`  ${c.content.slice(0, 200).replace(/\n/g, ' ')}${c.content.length > 200 ? '...' : ''}`);
+      }
+      break;
+    }
+    case 'peers': {
+      const res = await withMesh(m => m.listPeers());
+      if (!res.ok) { console.error(JSON.stringify(res)); process.exit(2); }
+      const agents = res.data?.agents ?? [];
+      if (flags.json) { console.log(JSON.stringify(agents, null, 2)); break; }
+      if (agents.length === 0) { console.log('(no peers)'); break; }
+      for (const a of agents) {
+        const age = Math.round((Date.now() - a.lastSeen) / 1000);
+        console.log(`${a.id.padEnd(28)} ${a.runtime.padEnd(12)} ${a.status.padEnd(8)} seen ${age}s ago`);
+      }
+      break;
+    }
+    case 'delegate': {
+      if (!flags.task) die('--task is required');
+      const priority = flags.priority ? parseInt(flags.priority, 10) : 2;
+      const instruction = (flags.to ? `[to:${flags.to}] ` : '') + flags.task;
+      const res = await withMesh(m => m.delegate(instruction, priority));
+      if (!res.ok) { console.error(JSON.stringify(res)); process.exit(2); }
+      console.log(res.data?.taskId ?? 'queued');
+      break;
+    }
+    case 'summarize': {
+      const hours = flags.hours ? parseInt(flags.hours, 10) : 4;
+      const out = await withMesh(m => m.summarizeActivity(hours));
+      console.log(out);
+      break;
+    }
+    case 'tail': {
+      const intervalMs = (flags.interval ? parseInt(flags.interval, 10) : 5) * 1000;
+      const seen = new Set();
+      let firstPass = true;
+      while (true) {
+        const res = await withMesh(m => m.op({ op: 'query', filter: {}, limit: 50 }));
+        const ctxs = res.data?.contexts ?? [];
+        for (const c of ctxs.slice().reverse()) {
+          if (seen.has(c.id)) continue;
+          seen.add(c.id);
+          if (firstPass) continue; // skip backlog on initial poll
+          const age = Math.round((Date.now() - c.createdAt) / 1000);
+          console.log(`[${c.type}] ${c.agentName} (${age}s ago) ${c.content.slice(0, 200).replace(/\n/g, ' ')}`);
+        }
+        firstPass = false;
+        await new Promise(r => setTimeout(r, intervalMs));
+      }
+    }
+    default: usage();
+  }
+} catch (err) {
+  die(String(err.message || err), 2);
+}

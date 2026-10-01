@@ -25,6 +25,7 @@ export class MeshHub {
     agents = new Map(); // agentId → ConnectedAgent
     wss;
     purgeTimer = null;
+    heartbeatCheckTimer = null;
     constructor(config = {}) {
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.storage = new MeshStorage(this.config.meshDir);
@@ -137,7 +138,7 @@ export class MeshHub {
             }
         }, purgeIntervalMs);
         // Heartbeat check — disconnect dead agents
-        setInterval(() => {
+        this.heartbeatCheckTimer = setInterval(() => {
             const now = Date.now();
             const timeout = this.config.heartbeatTimeoutMs;
             for (const [id, agent] of this.agents) {
@@ -199,6 +200,9 @@ export class MeshHub {
                 }
                 case 'delete': {
                     const ok = this.storage.deleteContext(op.id);
+                    if (ok) {
+                        this.broadcast({ type: 'hub:context:del', payload: { id: op.id } });
+                    }
                     return { ok, op: 'delete', error: ok ? undefined : 'Not found', ms: Date.now() - start };
                 }
                 case 'agents': {
@@ -211,7 +215,9 @@ export class MeshHub {
                     const agent = this.findBestAgent(op.task);
                     if (agent) {
                         // Send directly to that agent
-                        agent.ws.send(JSON.stringify({ type: 'hub:delegate', payload: op.task }));
+                        if (agent.ws.readyState === WebSocket.OPEN) {
+                            agent.ws.send(JSON.stringify({ type: 'hub:delegate', payload: op.task }));
+                        }
                         return {
                             ok: true, op: 'delegate', ms: Date.now() - start,
                             data: { taskId: op.task.id, assignedTo: agent.info, queued: false },
@@ -288,6 +294,8 @@ export class MeshHub {
     stop() {
         if (this.purgeTimer)
             clearInterval(this.purgeTimer);
+        if (this.heartbeatCheckTimer)
+            clearInterval(this.heartbeatCheckTimer);
         for (const agent of this.agents.values()) {
             agent.ws.close();
         }

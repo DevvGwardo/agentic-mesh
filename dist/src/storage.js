@@ -252,17 +252,19 @@ export class MeshStorage {
         const cutoff = Date.now() - staleMs;
         let purgedContexts = 0;
         let purgedAgents = 0;
-        // Purge stale contexts
-        const ctxFiles = readdirSync(this.contextsDir).filter(f => f.endsWith('.json'));
-        for (const file of ctxFiles) {
-            try {
-                const ctx = JSON.parse(readFileSync(join(this.contextsDir, file), 'utf-8'));
-                if (ctx.expiresAt && ctx.expiresAt < Date.now()) {
-                    unlinkSync(join(this.contextsDir, file));
-                    purgedContexts++;
+        // Warm the cache so we purge against current data, not stale in-memory state
+        this.warmContextCache();
+        // Purge expired contexts (expiredAt reached)
+        for (const [id, ctx] of this.contextsCache) {
+            if (ctx.expiresAt && ctx.expiresAt < Date.now()) {
+                const path = join(this.contextsDir, `${id}.json`);
+                try {
+                    unlinkSync(path);
                 }
+                catch { /* already gone */ }
+                this.contextsCache.delete(id);
+                purgedContexts++;
             }
-            catch { }
         }
         // Purge stale agents
         const agents = this.listAgents();

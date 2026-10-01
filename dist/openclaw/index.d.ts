@@ -37,7 +37,6 @@ export interface ClawMeshToolDefinition {
     inputSchema: Record<string, unknown>;
 }
 export declare const CLAW_MESH_TOOL: ClawMeshToolDefinition;
-export declare function createClawMeshRunner(mesh: Mesh): (args: Record<string, unknown>) => Promise<string>;
 export interface OpenClawPlugin {
     name: string;
     version: string;
@@ -48,7 +47,7 @@ export interface OpenClawPlugin {
         version: string;
     }) => Promise<{
         mesh: Mesh;
-        runTool: ReturnType<typeof createClawMeshRunner>;
+        runTool: (args: Record<string, unknown>) => Promise<string>;
     }>;
 }
 export declare function createOpenClawMeshPlugin(config: ClawMeshConfig): OpenClawPlugin;

@@ -23,6 +23,7 @@ export declare class MeshHub {
     private agents;
     private wss;
     private purgeTimer;
+    private heartbeatCheckTimer;
     constructor(config?: HubConfig);
     start(): void;
     private handleMeshOp;

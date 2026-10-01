@@ -24,4 +24,5 @@ export * from './types.js';
 export { Mesh } from './mesh.js';
 export { MeshStorage } from './storage.js';
 export { MeshHub } from './hub.js';
+export { MESH_TOOL_SCHEMA, runMeshTool } from './tool.js';
 //# sourceMappingURL=index.js.map

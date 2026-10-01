@@ -17,92 +17,6 @@
  * Or use the MeshCron skill for easier cron management.
  */
 import { Mesh } from '../src/mesh.js';
-export declare const MESH_TOOL_SCHEMA: {
-    name: string;
-    description: string;
-    inputSchema: {
-        type: string;
-        properties: {
-            operation: {
-                type: string;
-                enum: string[];
-                description: string;
-            };
-            content: {
-                type: string;
-                description: string;
-            };
-            type: {
-                type: string;
-                enum: string[];
-                description: string;
-            };
-            tags: {
-                type: string;
-                items: {
-                    type: string;
-                };
-                description: string;
-            };
-            importance: {
-                type: string;
-                minimum: number;
-                maximum: number;
-                description: string;
-            };
-            ttl_seconds: {
-                type: string;
-                description: string;
-            };
-            id: {
-                type: string;
-                description: string;
-            };
-            filter_type: {
-                type: string;
-                description: string;
-            };
-            filter_agent: {
-                type: string;
-                description: string;
-            };
-            filter_tags: {
-                type: string;
-                items: {
-                    type: string;
-                };
-                description: string;
-            };
-            filter_search: {
-                type: string;
-                description: string;
-            };
-            limit: {
-                type: string;
-                description: string;
-            };
-            instruction: {
-                type: string;
-                description: string;
-            };
-            target_runtime: {
-                type: string;
-                enum: string[];
-                description: string;
-            };
-            patch_content: {
-                type: string;
-                description: string;
-            };
-            patch_ttl_seconds: {
-                type: string;
-                description: string;
-            };
-        };
-        required: string[];
-    };
-};
-export declare function buildMeshToolHandler(mesh: Mesh): (args: Record<string, unknown>) => Promise<string>;
 export interface HermesMeshConfig {
     meshId: string;
     meshDir?: string;
@@ -120,7 +34,7 @@ export declare function createHermesMeshPlugin(config: HermesMeshConfig): {
         getVersion: () => string;
     }): Promise<{
         mesh: Mesh;
-        toolHandler: ReturnType<typeof buildMeshToolHandler>;
+        toolHandler: (args: Record<string, unknown>) => Promise<string>;
     }>;
 };
 /**
